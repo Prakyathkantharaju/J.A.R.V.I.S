@@ -1,6 +1,8 @@
 """Whoop adapter for recovery and strain data."""
 
+import json
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from jarvis.config.settings import settings
@@ -15,6 +17,21 @@ except ImportError:
     WHOOP_AVAILABLE = False
     WhoopClient = None  # type: ignore
 
+# Token storage path
+WHOOP_TOKEN_FILE = Path.home() / ".config" / "jarvis" / "whoop_tokens.json"
+
+
+def _load_saved_tokens() -> dict[str, str] | None:
+    """Load tokens from saved file."""
+    try:
+        if WHOOP_TOKEN_FILE.exists():
+            data = json.loads(WHOOP_TOKEN_FILE.read_text())
+            if data.get("access_token") and data.get("refresh_token"):
+                return data
+    except Exception:
+        pass
+    return None
+
 
 class WhoopAdapter(BaseAdapter):
     """Adapter for Whoop fitness/recovery data.
@@ -25,6 +42,8 @@ class WhoopAdapter(BaseAdapter):
     - Strain score
     - HRV (Heart Rate Variability)
     - Workouts
+
+    Tokens are persisted to ~/.config/jarvis/whoop_tokens.json after successful connection.
     """
 
     def __init__(self) -> None:
@@ -38,15 +57,26 @@ class WhoopAdapter(BaseAdapter):
             return False
 
         try:
-            access_token = settings.whoop.access_token.get_secret_value()
-            refresh_token = settings.whoop.refresh_token.get_secret_value()
+            # Ensure config directory exists
+            WHOOP_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+            client_id = settings.whoop.client_id
+            client_secret = settings.whoop.client_secret.get_secret_value()
+
+            # Try loading from saved token file first (fresher tokens from auto-refresh)
+            saved = _load_saved_tokens()
+            if saved:
+                access_token = saved["access_token"]
+                refresh_token = saved["refresh_token"]
+                self.logger.info("Using saved Whoop tokens")
+            else:
+                # Fall back to .env tokens
+                access_token = settings.whoop.access_token.get_secret_value()
+                refresh_token = settings.whoop.refresh_token.get_secret_value()
 
             if not access_token:
                 self.logger.warning("Whoop tokens not configured. Run oauth_setup.py")
                 return False
-
-            client_id = settings.whoop.client_id
-            client_secret = settings.whoop.client_secret.get_secret_value()
 
             self._client = WhoopClient.from_token(
                 access_token=access_token,
@@ -54,6 +84,10 @@ class WhoopAdapter(BaseAdapter):
                 client_id=client_id,
                 client_secret=client_secret,
             )
+
+            # Save tokens for future use (whoopy format includes refreshed tokens)
+            self._client.save_token(str(WHOOP_TOKEN_FILE))
+
             self._connected = True
             self.logger.info("Connected to Whoop API")
             return True

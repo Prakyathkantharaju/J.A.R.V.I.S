@@ -5,6 +5,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from jarvis.config.settings import settings
 from jarvis.adapters.base import AuthenticationError, BaseAdapter, FetchError
 
@@ -20,6 +22,9 @@ except ImportError:
 # Token storage path
 WHOOP_TOKEN_FILE = Path.home() / ".config" / "jarvis" / "whoop_tokens.json"
 
+# Whoop API v2 base URL (v1 recovery endpoint is broken)
+WHOOP_API_V2 = "https://api.prod.whoop.com/developer/v2"
+
 
 def _load_saved_tokens() -> dict[str, str] | None:
     """Load tokens from saved file."""
@@ -28,6 +33,32 @@ def _load_saved_tokens() -> dict[str, str] | None:
             data = json.loads(WHOOP_TOKEN_FILE.read_text())
             if data.get("access_token") and data.get("refresh_token"):
                 return data
+    except Exception:
+        pass
+    return None
+
+
+def _fetch_recovery_v2(access_token: str, cycle_id: int | None = None) -> dict[str, Any] | None:
+    """Fetch recovery data from Whoop API v2 (v1 endpoint is broken).
+
+    The v2 /recovery endpoint returns all recovery records with actual recovery scores.
+    """
+    try:
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = httpx.get(f"{WHOOP_API_V2}/recovery", headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            records = data.get("records", [])
+
+            if cycle_id:
+                # Find recovery for specific cycle
+                for rec in records:
+                    if rec.get("cycle_id") == cycle_id:
+                        return rec.get("score")
+            elif records:
+                # Return most recent recovery (first in list)
+                return records[0].get("score")
     except Exception:
         pass
     return None
@@ -49,6 +80,7 @@ class WhoopAdapter(BaseAdapter):
     def __init__(self) -> None:
         super().__init__("whoop")
         self._client: Any = None
+        self._access_token: str | None = None
 
     async def connect(self) -> bool:
         """Connect to Whoop API using OAuth tokens."""
@@ -84,6 +116,7 @@ class WhoopAdapter(BaseAdapter):
                 client_id=client_id,
                 client_secret=client_secret,
             )
+            self._access_token = access_token
 
             # Save tokens for future use (whoopy format includes refreshed tokens)
             self._client.save_token(str(WHOOP_TOKEN_FILE))
@@ -146,11 +179,13 @@ class WhoopAdapter(BaseAdapter):
             cycles = self._client.cycles.get_all(start=start_dt, end=end_dt)
 
             if cycles:
-                latest_cycle = cycles[-1]  # Most recent
+                # cycles[0] is today's current cycle (most recent by start time)
+                # cycles[-1] is the oldest in the range
+                today_cycle = cycles[0]
 
                 # Strain data from cycle score (Pydantic model)
-                if latest_cycle.score:
-                    score = latest_cycle.score
+                if today_cycle.score:
+                    score = today_cycle.score
                     data["strain"] = {
                         "score": getattr(score, "strain", None),
                         "max_hr": getattr(score, "max_heart_rate", None),
@@ -191,32 +226,23 @@ class WhoopAdapter(BaseAdapter):
                             "stages": stages,
                         }
 
-                        # Use sleep performance as recovery proxy since recovery API
-                        # requires additional OAuth scope that may not be available
-                        if sleep_performance is not None:
-                            data["recovery"] = {
-                                "score": sleep_performance,  # Sleep performance as proxy
-                                "source": "sleep_performance",
-                            }
             except Exception:
                 pass  # Sleep data not available
 
-            # Try dedicated recovery endpoint (may fail due to OAuth scope)
-            try:
-                recoveries = self._client.recovery.get_all(start=start_dt, end=end_dt)
-                if recoveries:
-                    latest_recovery = recoveries[-1]
-                    if latest_recovery.score:
-                        rec_score = latest_recovery.score
-                        # Override with actual recovery if available
-                        data["recovery"] = {
-                            "score": getattr(rec_score, "recovery_score", None),
-                            "hrv_ms": getattr(rec_score, "hrv_rmssd_milli", None),
-                            "resting_hr": getattr(rec_score, "resting_heart_rate", None),
-                            "source": "recovery_api",
-                        }
-            except Exception:
-                pass  # Recovery API not available, sleep proxy is used
+            # Get recovery from v2 API (v1 endpoint is broken)
+            # Get the cycle_id to find matching recovery
+            cycle_id = cycles[0].id if cycles else None
+            if self._access_token:
+                recovery_score = _fetch_recovery_v2(self._access_token, cycle_id)
+                if recovery_score:
+                    data["recovery"] = {
+                        "score": recovery_score.get("recovery_score"),
+                        "hrv_ms": recovery_score.get("hrv_rmssd_milli"),
+                        "resting_hr": recovery_score.get("resting_heart_rate"),
+                        "spo2": recovery_score.get("spo2_percentage"),
+                        "skin_temp": recovery_score.get("skin_temp_celsius"),
+                        "source": "recovery_v2_api",
+                    }
 
             self.logger.info("Fetched Whoop data", date=start_date.isoformat())
             return data

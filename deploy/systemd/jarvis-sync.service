@@ -1,0 +1,25 @@
+[Unit]
+Description=JARVIS Data Sync Service
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/jarvis
+Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/home/pi/jarvis/.env
+
+ExecStart=/home/pi/.local/bin/uv run python -m jarvis.autonomous.scheduler
+
+Restart=on-failure
+RestartSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis-sync
+
+[Install]
+WantedBy=multi-user.target

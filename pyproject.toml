@@ -1,0 +1,91 @@
+[project]
+name = "jarvis"
+version = "0.1.0"
+description = "JARVIS - Personal AI Assistant integrating life data sources"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Prakyath" }]
+
+dependencies = [
+    # Async & HTTP
+    "httpx>=0.27",
+    "aiofiles>=24.1",
+
+    # Data Sources
+    "garminconnect>=0.2",
+    "google-api-python-client>=2.150",
+    "google-auth-oauthlib>=1.2",
+    "msal>=1.31",
+
+    # Database & Storage
+    "sqlmodel>=0.0.22",
+    "aiosqlite>=0.20",
+    "redis>=5.2",
+
+    # Configuration & Utilities
+    "pydantic>=2.10",
+    "pydantic-settings>=2.6",
+    "python-dotenv>=1.0",
+    "structlog>=24.4",
+    "typer>=0.15",
+    "rich>=13.9",
+
+    # Scheduling
+    "apscheduler>=3.10",
+
+    # Markdown parsing (for Obsidian)
+    "markdown-it-py>=3.0",
+    "pyyaml>=6.0",
+
+    # Home Assistant
+    "homeassistant-api>=4.3",
+]
+
+[project.optional-dependencies]
+voice = [
+    "pvporcupine>=3.0",
+    "pyaudio>=0.2",
+    "faster-whisper>=1.0",
+]
+
+whoop = [
+    "whoopy>=0.1",
+]
+
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+
+all = [
+    "jarvis[voice,whoop,dev]",
+]
+
+[project.scripts]
+jarvis = "jarvis.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jarvis"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

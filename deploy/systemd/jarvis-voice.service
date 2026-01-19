@@ -1,0 +1,26 @@
+[Unit]
+Description=JARVIS Voice Assistant
+After=network.target bluetooth.target pulseaudio.service
+Wants=bluetooth.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/jarvis
+Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/home/pi/jarvis/.env
+
+ExecStart=/home/pi/.local/bin/uv run python -m jarvis.voice.pipeline
+
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jarvis-voice
+
+[Install]
+WantedBy=multi-user.target

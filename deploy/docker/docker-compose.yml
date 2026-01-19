@@ -1,0 +1,70 @@
+# JARVIS Docker Compose
+# For development or single-machine deployment
+
+version: '3.8'
+
+services:
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: jarvis-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  # Home Assistant (optional, for development)
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: jarvis-ha
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ha_config:/config
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - redis
+
+  # JARVIS Sync Service
+  jarvis-sync:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: jarvis-sync
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    volumes:
+      - jarvis_data:/var/lib/jarvis
+      - ../../config:/app/config:ro
+    command: uv run python -m jarvis.autonomous.scheduler
+    depends_on:
+      - redis
+
+  # JARVIS Voice (requires host audio access)
+  jarvis-voice:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.voice
+    container_name: jarvis-voice
+    restart: unless-stopped
+    privileged: true
+    env_file:
+      - ../../.env
+    volumes:
+      - jarvis_data:/var/lib/jarvis
+      - /run/dbus:/run/dbus:ro
+      - /dev/snd:/dev/snd
+    devices:
+      - /dev/snd
+    command: uv run python -m jarvis.voice.pipeline
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
+  ha_config:
+  jarvis_data:

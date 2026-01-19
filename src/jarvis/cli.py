@@ -288,6 +288,19 @@ def sync():
 
 
 @app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", help="Host to bind to"),
+    port: int = typer.Option(8000, help="Port to bind to"),
+):
+    """Start the JARVIS web dashboard server."""
+    console.print(Panel(f"Starting JARVIS Dashboard on http://{host}:{port}", style="blue"))
+
+    from jarvis.api import run_server
+
+    run_server(host=host, port=port)
+
+
+@app.command()
 def version():
     """Show JARVIS version."""
     from jarvis import __version__

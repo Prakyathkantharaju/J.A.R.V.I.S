@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-panel: #0a0a0a;
+            --bg-card: #0f0f0f;
+            --amber-glow: #ff9500;
+            --amber-bright: #ffb347;
+            --amber-dim: #8b5a00;
+            --amber-faint: #3d2800;
+            --green-online: #00ff41;
+            --red-offline: #ff3333;
+            --text-primary: #ffcc80;
+            --text-secondary: #996633;
+            --text-dim: #4a3520;
+            --border-glow: rgba(255, 149, 0, 0.3);
+            --scan-line: rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Mono', monospace;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* CRT Screen Effects */
+        .crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .crt-overlay::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                var(--scan-line) 2px,
+                var(--scan-line) 4px
+            );
+            animation: scanlines 0.1s linear infinite;
+        }
+
+        .crt-overlay::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(
+                ellipse at center,
+                transparent 0%,
+                rgba(0, 0, 0, 0.3) 100%
+            );
+        }
+
+        @keyframes scanlines {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(4px); }
+        }
+
+        /* Noise texture */
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* Main Container */
+        .command-center {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 30px 0 40px;
+            border-bottom: 1px solid var(--amber-faint);
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--amber-glow), transparent);
+            box-shadow: 0 0 20px var(--amber-glow);
+        }
+
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: 0.3em;
+            color: var(--amber-bright);
+            text-shadow:
+                0 0 10px var(--amber-glow),
+                0 0 20px var(--amber-glow),
+                0 0 40px var(--amber-dim);
+            animation: glow-pulse 3s ease-in-out infinite;
+        }
+
+        .logo span {
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            vertical-align: super;
+        }
+
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; }
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.4em;
+            margin-top: 10px;
+            text-transform: uppercase;
+        }
+
+        .timestamp {
+            font-size: 0.8rem;
+            color: var(--amber-dim);
+            margin-top: 15px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        /* Panel Styles */
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--amber-faint);
+            border-radius: 4px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--amber-glow), transparent);
+            opacity: 0.5;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--amber-faint);
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            color: var(--amber-glow);
+            text-transform: uppercase;
+        }
+
+        .panel-icon {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green-online);
+            box-shadow: 0 0 10px var(--green-online);
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        .panel-icon.offline {
+            background: var(--red-offline);
+            box-shadow: 0 0 10px var(--red-offline);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Health Panel */
+        .health-panel {
+            grid-column: span 8;
+        }
+
+        .health-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--amber-faint);
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .metric-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
+        }
+
+        .metric-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--amber-bright);
+            text-shadow: 0 0 20px var(--amber-glow);
+            line-height: 1;
+        }
+
+        .metric-unit {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-left: 5px;
+        }
+
+        .metric-bar {
+            margin-top: 15px;
+            height: 4px;
+            background: var(--bg-deep);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .metric-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--amber-dim), var(--amber-glow));
+            box-shadow: 0 0 10px var(--amber-glow);
+            transition: width 1s ease-out;
+        }
+
+        /* Sleep Stages */
+        .sleep-stages {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stage {
+            flex: 1;
+            text-align: center;
+        }
+
+        .stage-bar {
+            height: 40px;
+            background: var(--bg-deep);
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .stage-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transition: height 1s ease-out;
+        }
+
+        .stage-fill.deep { background: #4a148c; box-shadow: 0 0 10px #7c43bd; }
+        .stage-fill.light { background: #1565c0; box-shadow: 0 0 10px #5e92f3; }
+        .stage-fill.rem { background: #00838f; box-shadow: 0 0 10px #4fb3bf; }
+        .stage-fill.awake { background: #bf360c; box-shadow: 0 0 10px #f9683a; }
+
+        .stage-label {
+            font-size: 0.55rem;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Status Panel */
+        .status-panel {
+            grid-column: span 4;
+        }
+
+        .adapter-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .adapter-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--amber-faint);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .adapter-item:hover {
+            border-color: var(--amber-dim);
+            box-shadow: 0 0 15px rgba(255, 149, 0, 0.1);
+        }
+
+        .adapter-name {
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .adapter-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .adapter-status-text {
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .adapter-status-text.online { color: var(--green-online); }
+        .adapter-status-text.offline { color: var(--red-offline); }
+        .adapter-status-text.error { color: #ff9800; }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online {
+            background: var(--green-online);
+            box-shadow: 0 0 8px var(--green-online);
+        }
+        .status-dot.offline {
+            background: var(--red-offline);
+            box-shadow: 0 0 8px var(--red-offline);
+        }
+        .status-dot.error {
+            background: #ff9800;
+            box-shadow: 0 0 8px #ff9800;
+        }
+
+        /* Calendar Panel */
+        .calendar-panel {
+            grid-column: span 6;
+        }
+
+        .event-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .event-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .event-list::-webkit-scrollbar-track {
+            background: var(--bg-deep);
+        }
+
+        .event-list::-webkit-scrollbar-thumb {
+            background: var(--amber-dim);
+            border-radius: 2px;
+        }
+
+        .event-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            background: var(--bg-card);
+            border: 1px solid var(--amber-faint);
+            border-radius: 4px;
+            border-left: 3px solid var(--amber-glow);
+        }
+
+        .event-time {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: var(--amber-glow);
+            min-width: 60px;
+        }
+
+        .event-details {
+            flex: 1;
+        }
+
+        .event-title {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .event-meta {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
+        .no-events {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+
+        /* Summary Panel */
+        .summary-panel {
+            grid-column: span 6;
+        }
+
+        .summary-text {
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--amber-faint);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .summary-text::before {
+            content: '"';
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            color: var(--amber-faint);
+            line-height: 1;
+        }
+
+        /* Activity Panel */
+        .activity-panel {
+            grid-column: span 12;
+        }
+
+        .activity-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+        }
+
+        .activity-stat {
+            text-align: center;
+            padding: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--amber-faint);
+            border-radius: 4px;
+        }
+
+        .activity-icon {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            filter: grayscale(1) brightness(0.8);
+        }
+
+        .activity-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--amber-bright);
+            text-shadow: 0 0 15px var(--amber-glow);
+        }
+
+        .activity-label {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--amber-faint);
+            border-top-color: var(--amber-glow);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error-message {
+            text-align: center;
+            padding: 20px;
+            color: var(--red-offline);
+            font-size: 0.8rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            margin-top: 30px;
+            border-top: 1px solid var(--amber-faint);
+        }
+
+        .footer-text {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .health-panel { grid-column: span 12; }
+            .status-panel { grid-column: span 12; }
+            .calendar-panel { grid-column: span 12; }
+            .summary-panel { grid-column: span 12; }
+        }
+
+        @media (max-width: 768px) {
+            .logo { font-size: 2rem; }
+            .health-grid { grid-template-columns: 1fr; }
+            .activity-grid { grid-template-columns: repeat(2, 1fr); }
+            .metric-value { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="crt-overlay"></div>
+    <div class="noise"></div>
+
+    <div class="command-center">
+        <header class="header">
+            <h1 class="logo">J.A.R.V.I.S<span>.</span></h1>
+            <p class="subtitle">Just A Rather Very Intelligent System</p>
+            <p class="timestamp" id="timestamp">--:--:--</p>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Health Panel -->
+            <section class="panel health-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Biometrics</span>
+                    <span class="panel-icon" id="health-status"></span>
+                </div>
+                <div id="health-content" class="loading">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+
+            <!-- Status Panel -->
+            <section class="panel status-panel">
+                <div class="panel-header">
+                    <span class="panel-title">System Status</span>
+                    <span class="panel-icon" id="system-status"></span>
+                </div>
+                <div id="status-content" class="loading">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+
+            <!-- Calendar Panel -->
+            <section class="panel calendar-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Schedule</span>
+                    <span class="panel-icon" id="calendar-status"></span>
+                </div>
+                <div id="calendar-content" class="loading">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+
+            <!-- Summary Panel -->
+            <section class="panel summary-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Daily Briefing</span>
+                    <span class="panel-icon"></span>
+                </div>
+                <div id="summary-content" class="loading">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+
+            <!-- Activity Panel -->
+            <section class="panel activity-panel">
+                <div class="panel-header">
+                    <span class="panel-title">Activity Metrics</span>
+                    <span class="panel-icon" id="activity-status"></span>
+                </div>
+                <div id="activity-content" class="loading">
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="footer">
+            <p class="footer-text">Stark Industries // Life OS v0.1.0</p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.origin;
+
+        // Update timestamp
+        function updateTimestamp() {
+            const now = new Date();
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            };
+            document.getElementById('timestamp').textContent = now.toLocaleString('en-US', options);
+        }
+        setInterval(updateTimestamp, 1000);
+        updateTimestamp();
+
+        // Fetch health data
+        async function fetchHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                renderHealth(data);
+                document.getElementById('health-status').classList.remove('offline');
+            } catch (error) {
+                console.error('Health fetch error:', error);
+                document.getElementById('health-content').innerHTML = `
+                    <div class="error-message">Failed to load health data</div>
+                `;
+                document.getElementById('health-status').classList.add('offline');
+            }
+        }
+
+        function renderHealth(data) {
+            const sleep = data.sleep || {};
+            const recovery = data.recovery || {};
+            const activity = data.activity || {};
+
+            const sleepHours = (sleep.total_hours || 0).toFixed(1);
+            const recoveryScore = recovery.score || 0;
+            const strainScore = (activity.strain_score || 0).toFixed(1);
+
+            const stages = sleep.stages || {};
+            const totalStageHours = (stages.deep_hours || 0) + (stages.light_hours || 0) +
+                                    (stages.rem_hours || 0) + (stages.awake_hours || 0);
+
+            const getStagePercent = (hours) => totalStageHours > 0 ? (hours / totalStageHours) * 100 : 0;
+
+            document.getElementById('health-content').innerHTML = `
+                <div class="health-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Sleep Duration</div>
+                        <div class="metric-value">${sleepHours}<span class="metric-unit">hrs</span></div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" style="width: ${Math.min(sleepHours / 8 * 100, 100)}%"></div>
+                        </div>
+                        <div class="sleep-stages">
+                            <div class="stage">
+                                <div class="stage-bar">
+                                    <div class="stage-fill deep" style="height: ${getStagePercent(stages.deep_hours || 0)}%"></div>
+                                </div>
+                                <div class="stage-label">Deep</div>
+                            </div>
+                            <div class="stage">
+                                <div class="stage-bar">
+                                    <div class="stage-fill light" style="height: ${getStagePercent(stages.light_hours || 0)}%"></div>
+                                </div>
+                                <div class="stage-label">Light</div>
+                            </div>
+                            <div class="stage">
+                                <div class="stage-bar">
+                                    <div class="stage-fill rem" style="height: ${getStagePercent(stages.rem_hours || 0)}%"></div>
+                                </div>
+                                <div class="stage-label">REM</div>
+                            </div>
+                            <div class="stage">
+                                <div class="stage-bar">
+                                    <div class="stage-fill awake" style="height: ${getStagePercent(stages.awake_hours || 0)}%"></div>
+                                </div>
+                                <div class="stage-label">Awake</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Recovery Score</div>
+                        <div class="metric-value">${recoveryScore}<span class="metric-unit">%</span></div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" style="width: ${recoveryScore}%"></div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Strain Score</div>
+                        <div class="metric-value">${strainScore}</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" style="width: ${Math.min(strainScore / 21 * 100, 100)}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fetch status data
+        async function fetchStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                renderStatus(data);
+                const onlineCount = Object.values(data.adapters).filter(a => a.connected).length;
+                document.getElementById('system-status').classList.toggle('offline', onlineCount === 0);
+            } catch (error) {
+                console.error('Status fetch error:', error);
+                document.getElementById('status-content').innerHTML = `
+                    <div class="error-message">Failed to load system status</div>
+                `;
+                document.getElementById('system-status').classList.add('offline');
+            }
+        }
+
+        function renderStatus(data) {
+            const adapters = data.adapters || {};
+            const adapterNames = {
+                'whoop': 'Whoop',
+                'garmin': 'Garmin Connect',
+                'google_calendar': 'Google Calendar',
+                'outlook': 'Microsoft Outlook',
+                'obsidian': 'Obsidian Vault',
+                'home_assistant': 'Home Assistant'
+            };
+
+            let html = '<div class="adapter-list">';
+            for (const [key, value] of Object.entries(adapters)) {
+                const statusClass = value.connected ? 'online' : (value.error ? 'error' : 'offline');
+                const statusText = value.connected ? 'Online' : (value.error ? 'Error' : 'Offline');
+                html += `
+                    <div class="adapter-item">
+                        <span class="adapter-name">${adapterNames[key] || key}</span>
+                        <div class="adapter-status">
+                            <span class="adapter-status-text ${statusClass}">${statusText}</span>
+                            <span class="status-dot ${statusClass}"></span>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            document.getElementById('status-content').innerHTML = html;
+        }
+
+        // Fetch calendar data
+        async function fetchCalendar() {
+            try {
+                const response = await fetch(`${API_BASE}/api/calendar`);
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                renderCalendar(data);
+                document.getElementById('calendar-status').classList.remove('offline');
+            } catch (error) {
+                console.error('Calendar fetch error:', error);
+                document.getElementById('calendar-content').innerHTML = `
+                    <div class="error-message">Failed to load calendar</div>
+                `;
+                document.getElementById('calendar-status').classList.add('offline');
+            }
+        }
+
+        function renderCalendar(data) {
+            const events = data.events || [];
+
+            if (events.length === 0) {
+                document.getElementById('calendar-content').innerHTML = `
+                    <div class="no-events">No events scheduled for today</div>
+                `;
+                return;
+            }
+
+            let html = '<div class="event-list">';
+            for (const event of events.slice(0, 10)) {
+                const startTime = event.start_time ? new Date(event.start_time).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }) : '--:--';
+
+                html += `
+                    <div class="event-item">
+                        <div class="event-time">${startTime}</div>
+                        <div class="event-details">
+                            <div class="event-title">${event.title || 'Untitled Event'}</div>
+                            <div class="event-meta">${event.source || ''} ${event.location ? '// ' + event.location : ''}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            document.getElementById('calendar-content').innerHTML = html;
+        }
+
+        // Fetch briefing data
+        async function fetchBriefing() {
+            try {
+                const response = await fetch(`${API_BASE}/api/briefing`);
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                renderBriefing(data);
+                renderActivity(data);
+            } catch (error) {
+                console.error('Briefing fetch error:', error);
+                document.getElementById('summary-content').innerHTML = `
+                    <div class="error-message">Failed to load briefing</div>
+                `;
+                document.getElementById('activity-content').innerHTML = `
+                    <div class="error-message">Failed to load activity data</div>
+                `;
+            }
+        }
+
+        function renderBriefing(data) {
+            const summary = data.summary || 'No briefing available.';
+            document.getElementById('summary-content').innerHTML = `
+                <div class="summary-text">${summary}</div>
+            `;
+        }
+
+        function renderActivity(data) {
+            const health = data.sections?.health || {};
+            const activity = health.yesterday_activity || {};
+
+            const steps = activity.steps || 0;
+            const calories = activity.calories || 0;
+            const distance = (activity.distance_km || 0).toFixed(1);
+            const activeMin = activity.active_minutes || 0;
+            const floors = activity.floors_climbed || 0;
+
+            document.getElementById('activity-content').innerHTML = `
+                <div class="activity-grid">
+                    <div class="activity-stat">
+                        <div class="activity-icon">🚶</div>
+                        <div class="activity-value">${steps.toLocaleString()}</div>
+                        <div class="activity-label">Steps</div>
+                    </div>
+                    <div class="activity-stat">
+                        <div class="activity-icon">🔥</div>
+                        <div class="activity-value">${calories.toLocaleString()}</div>
+                        <div class="activity-label">Calories</div>
+                    </div>
+                    <div class="activity-stat">
+                        <div class="activity-icon">📏</div>
+                        <div class="activity-value">${distance}</div>
+                        <div class="activity-label">Distance (km)</div>
+                    </div>
+                    <div class="activity-stat">
+                        <div class="activity-icon">⏱️</div>
+                        <div class="activity-value">${activeMin}</div>
+                        <div class="activity-label">Active Min</div>
+                    </div>
+                    <div class="activity-stat">
+                        <div class="activity-icon">🏔️</div>
+                        <div class="activity-value">${floors}</div>
+                        <div class="activity-label">Floors</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('activity-status').classList.remove('offline');
+        }
+
+        // Initialize dashboard
+        async function init() {
+            await Promise.all([
+                fetchHealth(),
+                fetchStatus(),
+                fetchCalendar(),
+                fetchBriefing()
+            ]);
+        }
+
+        // Initial load
+        init();
+
+        // Refresh every 5 minutes
+        setInterval(init, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

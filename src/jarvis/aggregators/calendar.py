@@ -26,8 +26,14 @@ class CalendarAggregator:
 
     async def __aenter__(self) -> "CalendarAggregator":
         """Connect to all calendar sources."""
-        await self.google.connect()
-        await self.outlook.connect()
+        try:
+            await self.google.connect()
+        except Exception as e:
+            logger.warning("Google Calendar not available", error=str(e))
+        try:
+            await self.outlook.connect()
+        except Exception as e:
+            logger.warning("Outlook not available", error=str(e))
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

@@ -12,7 +12,7 @@ from rich.panel import Panel
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config.settings import settings
+from jarvis.config.settings import settings
 
 app = typer.Typer(help="JARVIS OAuth Setup Helper")
 console = Console()

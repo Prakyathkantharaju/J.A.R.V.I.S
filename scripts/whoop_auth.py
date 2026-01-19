@@ -44,14 +44,16 @@ def main():
     print()
 
     try:
-        client = WhoopClient.authorize(
+        client = WhoopClient.auth_flow(
             client_id=client_id,
             client_secret=client_secret,
             redirect_uri=redirect_uri,
         )
 
-        access_token = client.token["access_token"]
-        refresh_token = client.token["refresh_token"]
+        # Get token info from the client
+        token_info = client._client.token_info
+        access_token = token_info.access_token
+        refresh_token = token_info.refresh_token
 
         print()
         print("=" * 60)

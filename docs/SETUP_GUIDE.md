@@ -87,19 +87,10 @@ WHOOP_REDIRECT_URI=http://localhost:8080/callback
 
 4. Run OAuth flow (opens browser):
 ```bash
-uv run python -c "
-from whoopy import WhoopClient
-client = WhoopClient.authorize(
-    client_id='YOUR_CLIENT_ID',
-    client_secret='YOUR_CLIENT_SECRET',
-    redirect_uri='http://localhost:8080/callback'
-)
-print('Access Token:', client.token['access_token'])
-print('Refresh Token:', client.token['refresh_token'])
-"
+uv run python scripts/whoop_auth.py
 ```
 
-5. Copy the tokens to `.env`:
+5. Copy the tokens from the output to `.env`:
 ```bash
 WHOOP_ACCESS_TOKEN=<access_token_from_output>
 WHOOP_REFRESH_TOKEN=<refresh_token_from_output>

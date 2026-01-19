@@ -45,9 +45,14 @@ class WhoopAdapter(BaseAdapter):
                 self.logger.warning("Whoop tokens not configured. Run oauth_setup.py")
                 return False
 
-            self._client = WhoopClient(
+            client_id = settings.whoop.client_id
+            client_secret = settings.whoop.client_secret.get_secret_value()
+
+            self._client = WhoopClient.from_token(
                 access_token=access_token,
                 refresh_token=refresh_token,
+                client_id=client_id,
+                client_secret=client_secret,
             )
             self._connected = True
             self.logger.info("Connected to Whoop API")
@@ -69,7 +74,7 @@ class WhoopAdapter(BaseAdapter):
             return False
         try:
             # Try to get user profile
-            self._client.user.profile()
+            self._client.user.get_profile()
             return True
         except Exception:
             return False
@@ -100,67 +105,84 @@ class WhoopAdapter(BaseAdapter):
                 "source": "whoop",
             }
 
-            # Get cycles (contains recovery, sleep, strain)
+            # Get cycles (contains strain data)
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
 
-            cycles = self._client.cycle.collection(start=start_dt, end=end_dt)
+            cycles = self._client.cycles.get_all(start=start_dt, end=end_dt)
 
             if cycles:
                 latest_cycle = cycles[-1]  # Most recent
 
-                # Recovery data
-                recovery = latest_cycle.get("score", {}).get("recovery")
-                if recovery:
-                    data["recovery"] = {
-                        "score": recovery.get("recovery_score"),
-                        "hrv_ms": recovery.get("hrv_rmssd_milli"),
-                        "resting_hr": recovery.get("resting_heart_rate"),
-                        "spo2": recovery.get("spo2_percentage"),
-                        "skin_temp_celsius": recovery.get("skin_temp_celsius"),
-                    }
-
-                # Sleep data
-                sleep = latest_cycle.get("score", {}).get("sleep")
-                if sleep:
-                    data["sleep"] = {
-                        "quality_score": sleep.get("sleep_performance_percentage"),
-                        "efficiency": sleep.get("sleep_efficiency_percentage"),
-                        "total_hours": sleep.get("total_in_bed_time_milli", 0) / 3600000,
-                        "disturbances": sleep.get("disturbances"),
-                        "latency_minutes": sleep.get("latency_milli", 0) / 60000,
-                        "stages": {
-                            "awake_hours": sleep.get("awake_time_milli", 0) / 3600000,
-                            "light_hours": sleep.get("light_sleep_time_milli", 0) / 3600000,
-                            "deep_hours": sleep.get("slow_wave_sleep_time_milli", 0) / 3600000,
-                            "rem_hours": sleep.get("rem_sleep_time_milli", 0) / 3600000,
-                        },
-                    }
-
-                # Strain data
-                strain = latest_cycle.get("score", {}).get("strain")
-                if strain:
+                # Strain data from cycle score (Pydantic model)
+                if latest_cycle.score:
+                    score = latest_cycle.score
                     data["strain"] = {
-                        "score": strain.get("strain"),
-                        "max_hr": strain.get("max_heart_rate"),
-                        "avg_hr": strain.get("average_heart_rate"),
-                        "calories": strain.get("kilojoule", 0) * 0.239,  # kJ to kcal
+                        "score": getattr(score, "strain", None),
+                        "max_hr": getattr(score, "max_heart_rate", None),
+                        "avg_hr": getattr(score, "average_heart_rate", None),
+                        "calories": getattr(score, "calories", None),
                     }
 
-            # Get workouts for the date range
-            workouts = self._client.workout.collection(start=start_dt, end=end_dt)
-            if workouts:
-                data["workouts"] = [
-                    {
-                        "sport": w.get("sport_id"),
-                        "strain": w.get("score", {}).get("strain"),
-                        "avg_hr": w.get("score", {}).get("average_heart_rate"),
-                        "max_hr": w.get("score", {}).get("max_heart_rate"),
-                        "calories": w.get("score", {}).get("kilojoule", 0) * 0.239,
-                        "duration_minutes": w.get("score", {}).get("time_milli", 0) / 60000,
-                    }
-                    for w in workouts
-                ]
+            # Get sleep data (also used for recovery proxy)
+            try:
+                sleeps = self._client.sleep.get_all(start=start_dt, end=end_dt)
+                # Filter out naps, get most recent main sleep
+                main_sleeps = [s for s in sleeps if not getattr(s, "nap", False)]
+                if main_sleeps:
+                    latest_sleep = main_sleeps[-1]
+                    if latest_sleep.score:
+                        sleep_score = latest_sleep.score
+                        stage_summary = getattr(sleep_score, "stage_summary", None)
+
+                        # Calculate sleep duration and stages
+                        total_sleep_ms = 0
+                        stages = {}
+                        if stage_summary:
+                            total_sleep_ms = getattr(stage_summary, "total_sleep_time_milli", 0) or 0
+                            stages = {
+                                "deep_hours": (getattr(stage_summary, "total_slow_wave_sleep_time_milli", 0) or 0) / 3600000,
+                                "light_hours": (getattr(stage_summary, "total_light_sleep_time_milli", 0) or 0) / 3600000,
+                                "rem_hours": (getattr(stage_summary, "total_rem_sleep_time_milli", 0) or 0) / 3600000,
+                                "awake_hours": (getattr(stage_summary, "total_awake_time_milli", 0) or 0) / 3600000,
+                            }
+
+                        sleep_performance = getattr(sleep_score, "sleep_performance_percentage", None)
+                        sleep_efficiency = getattr(sleep_score, "sleep_efficiency_percentage", None)
+
+                        data["sleep"] = {
+                            "total_hours": total_sleep_ms / 3600000 if total_sleep_ms else 0,
+                            "quality_score": sleep_performance,
+                            "efficiency": sleep_efficiency,
+                            "stages": stages,
+                        }
+
+                        # Use sleep performance as recovery proxy since recovery API
+                        # requires additional OAuth scope that may not be available
+                        if sleep_performance is not None:
+                            data["recovery"] = {
+                                "score": sleep_performance,  # Sleep performance as proxy
+                                "source": "sleep_performance",
+                            }
+            except Exception:
+                pass  # Sleep data not available
+
+            # Try dedicated recovery endpoint (may fail due to OAuth scope)
+            try:
+                recoveries = self._client.recovery.get_all(start=start_dt, end=end_dt)
+                if recoveries:
+                    latest_recovery = recoveries[-1]
+                    if latest_recovery.score:
+                        rec_score = latest_recovery.score
+                        # Override with actual recovery if available
+                        data["recovery"] = {
+                            "score": getattr(rec_score, "recovery_score", None),
+                            "hrv_ms": getattr(rec_score, "hrv_rmssd_milli", None),
+                            "resting_hr": getattr(rec_score, "resting_heart_rate", None),
+                            "source": "recovery_api",
+                        }
+            except Exception:
+                pass  # Recovery API not available, sleep proxy is used
 
             self.logger.info("Fetched Whoop data", date=start_date.isoformat())
             return data

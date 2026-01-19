@@ -27,8 +27,14 @@ class HealthAggregator:
 
     async def __aenter__(self) -> "HealthAggregator":
         """Connect to all health sources."""
-        await self.garmin.connect()
-        await self.whoop.connect()
+        try:
+            await self.garmin.connect()
+        except Exception as e:
+            logger.warning("Garmin not available", error=str(e))
+        try:
+            await self.whoop.connect()
+        except Exception as e:
+            logger.warning("Whoop not available", error=str(e))
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:

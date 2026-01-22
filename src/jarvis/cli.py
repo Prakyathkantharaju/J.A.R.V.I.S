@@ -308,5 +308,76 @@ def version():
     console.print(f"JARVIS v{__version__}")
 
 
+@app.command()
+def chat(
+    message: str = typer.Argument(None, help="Single message to send (or omit for interactive mode)"),
+    model: str = typer.Option(None, help="Override model (e.g., openai/gpt-4o)"),
+):
+    """Chat with Clawd AI assistant.
+
+    Clawd has access to your Obsidian vault (tasks, notes, articles, food logs),
+    health data from Whoop/Garmin, and calendar events.
+
+    Examples:
+        jarvis chat "What are my tasks for today?"
+        jarvis chat  # Interactive mode
+    """
+    from jarvis.clawd import run_clawd
+    from jarvis.config.settings import settings
+
+    # Override model if specified
+    if model:
+        settings.openrouter.model = model
+
+    async def single_message(msg: str):
+        """Send a single message and print response."""
+        response = await run_clawd(msg)
+        console.print(f"\n[cyan]Clawd:[/cyan] {response}\n")
+
+    async def interactive_chat():
+        """Run interactive chat loop."""
+        console.print(Panel(
+            "[bold]Clawd[/bold] - Personal AI Assistant\n"
+            "Type 'exit' or 'quit' to end the conversation.\n"
+            f"Model: {settings.openrouter.model}",
+            style="blue"
+        ))
+        console.print()
+
+        while True:
+            try:
+                user_input = console.input("[bold green]You:[/bold green] ")
+            except (KeyboardInterrupt, EOFError):
+                console.print("\n[yellow]Goodbye![/yellow]")
+                break
+
+            user_input = user_input.strip()
+            if not user_input:
+                continue
+
+            if user_input.lower() in ("exit", "quit", "bye", "q"):
+                console.print("[yellow]Goodbye![/yellow]")
+                break
+
+            # Show thinking indicator
+            with console.status("[cyan]Thinking...[/cyan]"):
+                response = await run_clawd(user_input)
+
+            console.print(f"[cyan]Clawd:[/cyan] {response}\n")
+
+    if message:
+        asyncio.run(single_message(message))
+    else:
+        asyncio.run(interactive_chat())
+
+
+@app.command()
+def ask(
+    question: str = typer.Argument(..., help="Question to ask Clawd"),
+):
+    """Quick question to Clawd (alias for 'chat' with single message)."""
+    chat(message=question)
+
+
 if __name__ == "__main__":
     app()

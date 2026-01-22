@@ -1,6 +1,6 @@
 [Unit]
-Description=JARVIS Data Sync Service
-After=network.target jarvis-api.service
+Description=JARVIS API Server & Dashboard
+After=network.target
 
 [Service]
 Type=simple
@@ -11,15 +11,15 @@ Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 EnvironmentFile=/home/pi/life_os/.env
 
-ExecStart=/home/pi/.local/bin/uv run python -m jarvis.autonomous.scheduler
+ExecStart=/home/pi/.local/bin/uv run jarvis serve --host 0.0.0.0 --port 8000
 
-Restart=on-failure
-RestartSec=30
+Restart=always
+RestartSec=10
 
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=jarvis-sync
+SyslogIdentifier=jarvis-api
 
 [Install]
 WantedBy=multi-user.target

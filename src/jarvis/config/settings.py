@@ -76,6 +76,15 @@ class VoiceSettings(BaseSettings):
     whisper_model: str = Field(default="base", alias="WHISPER_MODEL")
 
 
+class OpenRouterSettings(BaseSettings):
+    """OpenRouter API settings for Clawd."""
+
+    model_config = SettingsConfigDict(env_prefix="OPENROUTER_", env_file=".env", extra="ignore")
+
+    api_key: SecretStr = SecretStr("")
+    model: str = "openai/gpt-5.2"  # GPT-5.2
+
+
 class DatabaseSettings(BaseSettings):
     """Database settings."""
 
@@ -125,6 +134,7 @@ class Settings(BaseSettings):
     voice: VoiceSettings = Field(default_factory=VoiceSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     pi: PiSettings = Field(default_factory=PiSettings)
+    openrouter: OpenRouterSettings = Field(default_factory=OpenRouterSettings)
 
 
 # Global settings instance

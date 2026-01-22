@@ -1,0 +1,16 @@
+[Unit]
+Description=Refresh Whoop OAuth Tokens
+After=network.target
+
+[Service]
+Type=oneshot
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/life_os
+Environment="PATH=/home/pi/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/pi/.local/bin/uv run python scripts/refresh_whoop_token.py
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=whoop-refresh

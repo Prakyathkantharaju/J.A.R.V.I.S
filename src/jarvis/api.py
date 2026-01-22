@@ -112,6 +112,42 @@ async def get_status() -> dict[str, Any]:
     return {"adapters": status, "timestamp": date.today().isoformat()}
 
 
+from pydantic import BaseModel
+
+
+class ChatRequest(BaseModel):
+    """Chat request model for Clawdbot integration."""
+
+    message: str
+    user_id: str | None = None
+
+
+class ChatResponse(BaseModel):
+    """Chat response model."""
+
+    response: str
+    user_id: str | None = None
+
+
+@app.post("/api/chat")
+async def chat_endpoint(request: ChatRequest) -> ChatResponse:
+    """Chat with Clawd AI assistant.
+
+    This endpoint is used by Clawdbot for WhatsApp integration.
+    """
+    from jarvis.clawd import run_clawd
+
+    try:
+        response = await run_clawd(request.message)
+        return ChatResponse(response=response, user_id=request.user_id)
+    except Exception as e:
+        logger.error("Chat failed", error=str(e))
+        return ChatResponse(
+            response=f"Sorry, I encountered an error: {str(e)}",
+            user_id=request.user_id,
+        )
+
+
 def run_server(host: str = "0.0.0.0", port: int = 8000) -> None:
     """Run the API server."""
     import uvicorn

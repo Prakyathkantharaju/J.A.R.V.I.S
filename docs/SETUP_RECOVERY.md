@@ -210,78 +210,139 @@ curl http://localhost:8000/api/health
 
 ## Part 4: WhatsApp Integration (Clawdbot)
 
+Clawdbot provides WhatsApp integration using Claude (Anthropic) as the AI agent.
+
 ### 4.1 Install Clawdbot
 
 ```bash
 sudo npm install -g clawdbot@latest
 ```
 
-### 4.2 Configure Clawdbot
+### 4.2 Run Onboarding & Setup
 
 ```bash
-# Run onboarding
-clawdbot onboard --install-daemon
+# Run onboarding wizard
+clawdbot onboard
 
-# Create config
-mkdir -p ~/.clawdbot
-cat > ~/.clawdbot/clawdbot.json << 'EOF'
-{
-  "channels": {
-    "whatsapp": {
-      "enabled": true,
-      "allowFrom": ["+1YOURNUMBER"]
-    }
-  },
-  "agent": {
-    "type": "custom",
-    "endpoint": "http://localhost:8000/api/chat"
-  }
-}
-EOF
+# Fix any issues
+clawdbot doctor --fix
+
+# Create credentials directory
+mkdir -p ~/.clawdbot/credentials
+chmod 700 ~/.clawdbot/credentials
+
+# Install gateway daemon (user service)
+clawdbot daemon install
+
+# Enable and start gateway
+systemctl --user enable --now clawdbot-gateway
 ```
 
-### 4.3 Pair WhatsApp
+### 4.3 Add Anthropic API Key
 
 ```bash
-# This shows a QR code - scan with WhatsApp
+# Add your Anthropic API key
+clawdbot models auth paste-token --provider anthropic
+# Paste your API key when prompted
+```
+
+### 4.4 Configure WhatsApp Channel
+
+```bash
+# Add WhatsApp channel to config (using Python since jq may not be installed)
+python3 -c "
+import json
+with open('/home/pi/.clawdbot/clawdbot.json') as f:
+    config = json.load(f)
+config['channels'] = {'whatsapp': {'dmPolicy': 'allowlist', 'allowFrom': ['+1YOURNUMBER']}}
+with open('/home/pi/.clawdbot/clawdbot.json', 'w') as f:
+    json.dump(config, f, indent=2)
+"
+
+# Restart gateway
+systemctl --user restart clawdbot-gateway
+```
+
+### 4.5 Pair WhatsApp
+
+```bash
+# This shows a QR code - scan with WhatsApp (Linked Devices)
 clawdbot channels login
 ```
 
-### 4.4 Create Chat API Endpoint
+### 4.6 Create JARVIS Skill for Clawdbot
 
-Add to JARVIS API (`src/jarvis/api.py`):
-
-```python
-@app.post("/api/chat")
-async def chat_endpoint(request: ChatRequest):
-    from jarvis.clawd import run_clawd
-    response = await run_clawd(request.message)
-    return {"response": response}
-```
-
-### 4.5 Clawdbot Systemd Service
+Create `~/.clawdbot/skills/jarvis/SKILL.md`:
 
 ```bash
-# Create service file
-sudo cat > /etc/systemd/system/clawdbot.service << 'EOF'
-[Unit]
-Description=Clawdbot WhatsApp Gateway
-After=network.target jarvis-api.service
+mkdir -p ~/.clawdbot/skills/jarvis
+cat > ~/.clawdbot/skills/jarvis/SKILL.md << 'EOF'
+---
+name: jarvis
+description: Access JARVIS personal data - Obsidian daily notes with tasks, health metrics, and calendar
+trigger: when user asks about tasks, notes, health, sleep, recovery, calendar, briefing, or daily note
+---
 
-[Service]
-Type=simple
-User=pi
-ExecStart=/usr/bin/clawdbot gateway
-Restart=always
-RestartSec=10
+# JARVIS Personal Assistant Integration
 
-[Install]
-WantedBy=multi-user.target
+## CRITICAL: Where Tasks Live
+
+**Daily notes with tasks are at: `/home/pi/Documents/all-notes-nopass/Notes/YYYY-MM-DD.md`**
+
+Task format:
+- `- [ ]` = incomplete task
+- `- [x]` = completed task
+
+## Commands
+
+### Read Today's Daily Note (ALWAYS DO THIS FIRST FOR TASKS)
+```bash
+cat "/home/pi/Documents/all-notes-nopass/Notes/$(date +%Y-%m-%d).md"
+```
+
+### Health Data
+```bash
+curl -s http://localhost:8000/api/health
+```
+
+### Calendar Events
+```bash
+curl -s http://localhost:8000/api/calendar
+```
 EOF
+```
 
-# Enable and start
-sudo systemctl daemon-reload
-sudo systemctl enable --now clawdbot.service
+### 4.7 Configure Workspace Files
+
+Update `~/jarvis-workspace/TOOLS.md` with JARVIS integration instructions and journaling feature.
+
+Update `~/jarvis-workspace/SOUL.md` with Clawd persona.
+
+### 4.8 Set Up Morning Briefing (Cron)
+
+```bash
+clawdbot cron add \
+  --name "Morning Briefing" \
+  --cron "0 6 * * *" \
+  --tz "America/New_York" \
+  --session isolated \
+  --message "Give me my morning briefing: read my daily note for tasks, check my health data from JARVIS API, and summarize my calendar for today." \
+  --deliver \
+  --channel whatsapp \
+  --to "+1YOURNUMBER"
+```
+
+### 4.9 Verify Clawdbot Setup
+
+```bash
+# Check status
+clawdbot status
+
+# List cron jobs
+clawdbot cron list
+
+# Check skills
+clawdbot skills list | grep jarvis
 ```
 
 ---
@@ -310,6 +371,30 @@ jarvis serve               # Start web dashboard (port 8000)
 jarvis home on light.living_room
 jarvis speak "Hello world"
 ```
+
+---
+
+## Part 5b: WhatsApp Features
+
+### Morning Briefing
+- Automatic WhatsApp message at 6 AM Eastern daily
+- Includes: tasks from daily note, health data, calendar events
+- Managed via: `clawdbot cron list`
+
+### Journaling via WhatsApp
+Say "let me journal" or "journal time" to start a journaling session.
+- Clawd guides you through reflection with follow-up questions
+- When done, say "save" and it saves to your Obsidian vault
+- Journal location: `/home/pi/Documents/all-notes-nopass/YYYY/Mon/Mon D.md`
+- Example: `2026/Jan/Jan 21.md`
+
+### Task Queries
+- "What are my tasks?" - reads today's daily note
+- "Give me my briefing" - full health + calendar + tasks summary
+
+### Health Queries
+- "How did I sleep?" - Whoop/Garmin sleep data
+- "What's my recovery?" - HRV, recovery score
 
 ---
 
@@ -356,6 +441,18 @@ clawdbot channels login
 clawdbot status
 ```
 
+### Clawdbot Gateway Not Running
+```bash
+# Check status
+systemctl --user status clawdbot-gateway
+
+# Restart
+systemctl --user restart clawdbot-gateway
+
+# View logs
+clawdbot logs --follow
+```
+
 ---
 
 ## Part 7: Backup & Restore
@@ -363,9 +460,10 @@ clawdbot status
 ### What to Backup
 ```bash
 # Critical files
-~/.config/jarvis/              # OAuth tokens
+~/.config/jarvis/              # OAuth tokens (Whoop, Google)
 ~/life_os/.env                 # Configuration
-~/.clawdbot/                   # Clawdbot credentials
+~/.clawdbot/                   # Clawdbot config, credentials, skills
+~/jarvis-workspace/            # Clawdbot workspace (TOOLS.md, SOUL.md)
 ~/Documents/all-notes-nopass/  # Obsidian vault
 ```
 
@@ -377,6 +475,7 @@ mkdir -p $BACKUP_DIR
 cp -r ~/.config/jarvis $BACKUP_DIR/
 cp ~/life_os/.env $BACKUP_DIR/
 cp -r ~/.clawdbot $BACKUP_DIR/
+cp -r ~/jarvis-workspace $BACKUP_DIR/
 tar -czf $BACKUP_DIR.tar.gz $BACKUP_DIR
 echo "Backup saved to $BACKUP_DIR.tar.gz"
 ```

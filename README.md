@@ -1,6 +1,8 @@
 # JARVIS - Personal AI Assistant
 
-JARVIS is a modular personal assistant that aggregates data from multiple life sources and runs on Raspberry Pi hardware.
+JARVIS (Just A Rather Very Intelligent System) is a modular personal assistant that aggregates data from multiple life sources and runs on Raspberry Pi hardware.
+
+![JARVIS Dashboard](docs/images/dashboard.png)
 
 ## Overview
 
@@ -95,6 +97,26 @@ jarvis notes       # Search Obsidian vault
 jarvis home        # Control Home Assistant devices
 jarvis speak       # TTS via Home Assistant
 jarvis sync        # Trigger data sync
+jarvis serve       # Start web dashboard on port 8000
+jarvis chat        # Chat with Clawd AI assistant
+jarvis ask "..."   # Quick question to Clawd
+```
+
+## Clawd AI Assistant
+
+Clawd is a personal AI assistant powered by GPT-5.2 via OpenRouter. It has access to:
+
+- **Obsidian vault**: Tasks, notes, saved articles, food logs
+- **Health data**: Sleep, recovery, strain from Whoop/Garmin
+- **Calendar**: Events from Google Calendar
+
+```bash
+# Interactive chat
+jarvis chat
+
+# Single question
+jarvis ask "What are my tasks for today?"
+jarvis ask "How did I sleep last night?"
 ```
 
 ## Quick Start
@@ -127,11 +149,23 @@ ssh pi@10.0.0.7 "cd ~/jarvis && source ~/.local/bin/env && uv run jarvis status"
 | Adapter | Status | Notes |
 |---------|--------|-------|
 | Garmin | Working | Direct login |
-| Whoop | Working | OAuth required |
+| Whoop | Working | OAuth with auto-refresh every 30 min |
 | Google Calendar | Working | OAuth required |
 | Outlook | Not configured | Azure app registration needed |
-| Obsidian | Pending | Install Obsidian on Pi via Flatpak |
+| Obsidian | Working | Flatpak on Pi, auto-starts on boot |
 | Home Assistant | Working | Running on Pi 4 |
+
+## Systemd Services (Auto-start on boot)
+
+```bash
+# On Pi 5
+sudo systemctl status jarvis-api      # Web dashboard & API
+sudo systemctl status whoop-refresh   # Token refresh timer
+systemctl --user status obsidian      # Obsidian app
+
+# View logs
+sudo journalctl -u jarvis-api -f
+```
 
 ## Dependencies
 

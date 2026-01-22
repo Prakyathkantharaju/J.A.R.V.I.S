@@ -14,11 +14,13 @@ JARVIS connects to your health trackers, calendars, notes, and smart home to pro
 Mac/Desktop                    Pi 5 (Brain)                 Pi 4 (Data)
 +-----------+                 +-------------+              +---------------+
 | Claude    | <-- SSH/CLI --> | JARVIS CLI  |              | Home Assistant|
-| Code      |                 | Voice (future)|            | Redis (future)|
-+-----------+                 +-------------+              +---------------+
-                                    |                            |
-                                    +------- Network ------------+
-                                    |
+| Code      |                 | Clawdbot    |              | Redis (future)|
++-----------+                 | (WhatsApp)  |              +---------------+
+                              +-------------+
+      Phone                         |                            |
++-----------+                       +------- Network ------------+
+| WhatsApp  | <-- Clawdbot -------->|
++-----------+                       |
                     +---------------+---------------+
                     |               |               |
                  Garmin          Whoop          Google
@@ -104,7 +106,7 @@ jarvis ask "..."   # Quick question to Clawd
 
 ## Clawd AI Assistant
 
-Clawd is a personal AI assistant powered by GPT-5.2 via OpenRouter. It has access to:
+Clawd is a personal AI assistant powered by Claude (Anthropic). It has access to:
 
 - **Obsidian vault**: Tasks, notes, saved articles, food logs
 - **Health data**: Sleep, recovery, strain from Whoop/Garmin
@@ -118,6 +120,43 @@ jarvis chat
 jarvis ask "What are my tasks for today?"
 jarvis ask "How did I sleep last night?"
 ```
+
+## WhatsApp Integration (Clawdbot)
+
+JARVIS integrates with WhatsApp via [Clawdbot](https://clawd.bot), allowing you to interact with your personal data from your phone.
+
+### Features
+
+- **Morning Briefing**: Automatic daily briefing at 6 AM Eastern with tasks, health data, and calendar
+- **Task Queries**: "What are my tasks?" reads from your Obsidian daily notes
+- **Health Queries**: "How did I sleep?" fetches Whoop/Garmin data
+- **Journaling**: Say "let me journal" to start a guided journaling session that saves to your Obsidian vault
+
+### Journaling via WhatsApp
+
+1. Send "let me journal" or "journal time"
+2. Clawd guides you through reflection with follow-up questions
+3. Say "save" when done - entry saves to `YYYY/Mon/Mon D.md` in your vault
+
+### Setup
+
+```bash
+# Install Clawdbot
+sudo npm install -g clawdbot@latest
+
+# Run setup
+clawdbot onboard
+clawdbot daemon install
+systemctl --user enable --now clawdbot-gateway
+
+# Add Anthropic API key
+clawdbot models auth paste-token --provider anthropic
+
+# Pair WhatsApp (scan QR code)
+clawdbot channels login
+```
+
+See [SETUP_RECOVERY.md](docs/SETUP_RECOVERY.md) for complete setup instructions.
 
 ## Quick Start
 
@@ -159,12 +198,14 @@ ssh pi@10.0.0.7 "cd ~/jarvis && source ~/.local/bin/env && uv run jarvis status"
 
 ```bash
 # On Pi 5
-sudo systemctl status jarvis-api      # Web dashboard & API
-sudo systemctl status whoop-refresh   # Token refresh timer
-systemctl --user status obsidian      # Obsidian app
+sudo systemctl status jarvis-api          # Web dashboard & API
+sudo systemctl status whoop-refresh       # Token refresh timer
+systemctl --user status obsidian          # Obsidian app
+systemctl --user status clawdbot-gateway  # WhatsApp gateway
 
 # View logs
 sudo journalctl -u jarvis-api -f
+clawdbot logs --follow
 ```
 
 ## Dependencies

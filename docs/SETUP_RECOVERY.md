@@ -273,8 +273,8 @@ EOF
 systemctl --user daemon-reload
 systemctl --user restart clawdbot-gateway
 
-# Set Bedrock Claude as default model
-clawdbot models set amazon-bedrock/us.anthropic.claude-opus-4-5-v1:0
+# Set Bedrock Claude Opus 4.5 as default model
+clawdbot models set amazon-bedrock/global.anthropic.claude-opus-4-5-20251101-v1:0
 ```
 
 **Option B: Anthropic API Key**

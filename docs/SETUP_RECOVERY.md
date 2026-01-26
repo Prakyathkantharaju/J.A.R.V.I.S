@@ -113,8 +113,12 @@ HOME_ASSISTANT_TOKEN=your_ha_long_lived_token
 OPENROUTER_API_KEY=sk-or-v1-your_openrouter_key
 OPENROUTER_MODEL=openai/gpt-5.2
 
-# Anthropic (optional)
+# Anthropic (optional, for direct API access)
 ANTHROPIC_API_KEY=your_anthropic_key
+
+# AWS Bedrock (for Clawdbot - preferred)
+AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
+AWS_REGION=us-east-1
 ```
 
 ### 2.2 Whoop OAuth Setup (One-time)
@@ -238,10 +242,44 @@ clawdbot daemon install
 systemctl --user enable --now clawdbot-gateway
 ```
 
-### 4.3 Add Anthropic API Key
+### 4.3 Configure Model Provider
+
+**Option A: AWS Bedrock (Recommended)**
+
+Bedrock API key is loaded from `~/life_os/.env` via the systemd service.
 
 ```bash
-# Add your Anthropic API key
+# Update service to load .env file
+cat > ~/.config/systemd/user/clawdbot-gateway.service << 'EOF'
+[Unit]
+Description=Clawdbot Gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart="/usr/bin/node" "/usr/lib/node_modules/clawdbot/dist/entry.js" gateway --port 18789
+Restart=always
+RestartSec=5
+KillMode=process
+EnvironmentFile=/home/pi/life_os/.env
+Environment=HOME=/home/pi
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment=CLAWDBOT_GATEWAY_PORT=18789
+
+[Install]
+WantedBy=default.target
+EOF
+
+systemctl --user daemon-reload
+systemctl --user restart clawdbot-gateway
+
+# Set Bedrock Claude as default model
+clawdbot models set amazon-bedrock/us.anthropic.claude-opus-4-5-v1:0
+```
+
+**Option B: Anthropic API Key**
+
+```bash
 clawdbot models auth paste-token --provider anthropic
 # Paste your API key when prompted
 ```

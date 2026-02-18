@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-JARVIS is a personal AI operating system that aggregates data from health trackers (Whoop, Garmin), calendars (Google, Outlook), notes (Obsidian), and smart home (Home Assistant). It runs on Raspberry Pi hardware with WhatsApp integration via Clawdbot.
+JARVIS is a personal AI operating system that aggregates data from health trackers (Whoop, Garmin), calendars (Google, Outlook), notes (Obsidian), and smart home (Home Assistant). It runs on Raspberry Pi hardware with WhatsApp integration via OpenClaw.
 
 ## Commands
 
@@ -79,7 +79,7 @@ All settings via Pydantic Settings in `src/jarvis/config/settings.py`. Environme
 - `OBSIDIAN_VAULT_PATH` - Path to Obsidian vault
 - `HOME_ASSISTANT_URL`, `HOME_ASSISTANT_TOKEN` - Home Assistant
 - `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` - AI model config
-- `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION` - Bedrock (for Clawdbot)
+- `AWS_BEARER_TOKEN_BEDROCK`, `AWS_REGION` - Bedrock (for OpenClaw)
 
 ## Key Integration Points
 
@@ -93,21 +93,21 @@ All settings via Pydantic Settings in `src/jarvis/config/settings.py`. Environme
 - Garmin: Direct login credentials
 - Health data merging prioritizes Whoop for sleep/recovery, Garmin for steps
 
-### WhatsApp (Clawdbot)
+### WhatsApp (OpenClaw)
 - Gateway runs as systemd user service on Pi
-- Skills in `~/.clawdbot/skills/jarvis/SKILL.md`
+- Skills in `~/.openclaw/skills/jarvis/SKILL.md`
 - Workspace config in `~/jarvis-workspace/TOOLS.md` and `SOUL.md`
-- Morning briefing via cron: `clawdbot cron list`
+- Morning briefing via cron: `openclaw cron list`
 
 ## Deployment
 
-**Pi 5** (10.0.0.7): Brain - JARVIS API, Clawdbot, Obsidian
+**Pi 5** (10.0.0.7): Brain - JARVIS API, OpenClaw, Obsidian
 **Pi 4** (10.0.0.223): Data - Home Assistant
 
 Systemd services:
 - `jarvis-api.service` - Web API
 - `whoop-refresh.timer` - Token refresh every 30 min
-- `clawdbot-gateway.service` (user) - WhatsApp gateway
+- `openclaw-gateway.service` (user) - WhatsApp gateway
 
 Deploy: `rsync -avz --exclude '.venv' . pi@10.0.0.7:~/life_os/`
 

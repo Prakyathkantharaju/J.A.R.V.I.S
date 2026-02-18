@@ -74,17 +74,17 @@ sudo systemctl start jarvis-ha
 - Data: `~/.local/share/jarvis/` or `/var/lib/jarvis/`
 - Logs: `~/.local/state/jarvis/` or `/var/log/jarvis/`
 
-## Clawdbot Integration
+## OpenClaw Integration
 
 ```bash
-# Install Clawdbot
-npm install -g clawdbot@latest
+# Install OpenClaw
+npm install -g openclaw@latest
 
 # Onboard
-clawdbot onboard --install-daemon
+openclaw onboard --install-daemon
 
 # Install JARVIS skills
-clawdbot skill install ./src/jarvis/skills/
+openclaw skill install ./src/jarvis/skills/
 ```
 
 ## Troubleshooting

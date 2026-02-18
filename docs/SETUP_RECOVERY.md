@@ -9,7 +9,7 @@ This guide documents the complete JARVIS setup for disaster recovery. If the Pi 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    USER INTERFACES                           │
-│  Web Dashboard │ CLI │ WhatsApp (Clawdbot) │ Voice (Future) │
+│  Web Dashboard │ CLI │ WhatsApp (OpenClaw) │ Voice (Future) │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────┴──────────────────────────────────┐
@@ -17,7 +17,7 @@ This guide documents the complete JARVIS setup for disaster recovery. If the Pi 
 │  • JARVIS API Server (port 8000)                            │
 │  • Clawd AI Agent (GPT-5.2 via OpenRouter)                  │
 │  • Obsidian (Flatpak)                                       │
-│  • Clawdbot Gateway (WhatsApp bridge)                       │
+│  • OpenClaw Gateway (WhatsApp bridge)                       │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────┴──────────────────────────────────┐
@@ -45,7 +45,7 @@ sudo apt update && sudo apt upgrade -y
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source ~/.bashrc
 
-# Install Node.js 22 (for Clawdbot)
+# Install Node.js 22 (for OpenClaw)
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
@@ -116,7 +116,7 @@ OPENROUTER_MODEL=openai/gpt-5.2
 # Anthropic (optional, for direct API access)
 ANTHROPIC_API_KEY=your_anthropic_key
 
-# AWS Bedrock (for Clawdbot - preferred)
+# AWS Bedrock (for OpenClaw - preferred)
 AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key
 AWS_REGION=us-east-1
 ```
@@ -212,34 +212,34 @@ curl http://localhost:8000/api/health
 
 ---
 
-## Part 4: WhatsApp Integration (Clawdbot)
+## Part 4: WhatsApp Integration (OpenClaw)
 
-Clawdbot provides WhatsApp integration using Claude (Anthropic) as the AI agent.
+OpenClaw (formerly Clawdbot) provides WhatsApp integration using Claude (Anthropic) as the AI agent.
 
-### 4.1 Install Clawdbot
+### 4.1 Install OpenClaw
 
 ```bash
-sudo npm install -g clawdbot@latest
+sudo npm install -g openclaw@latest
 ```
 
 ### 4.2 Run Onboarding & Setup
 
 ```bash
 # Run onboarding wizard
-clawdbot onboard
+openclaw onboard
 
 # Fix any issues
-clawdbot doctor --fix
+openclaw doctor --fix
 
 # Create credentials directory
-mkdir -p ~/.clawdbot/credentials
-chmod 700 ~/.clawdbot/credentials
+mkdir -p ~/.openclaw/credentials
+chmod 700 ~/.openclaw/credentials
 
 # Install gateway daemon (user service)
-clawdbot daemon install
+openclaw daemon install
 
 # Enable and start gateway
-systemctl --user enable --now clawdbot-gateway
+systemctl --user enable --now openclaw-gateway
 ```
 
 ### 4.3 Configure Model Provider
@@ -249,38 +249,20 @@ systemctl --user enable --now clawdbot-gateway
 Bedrock API key is loaded from `~/life_os/.env` via the systemd service.
 
 ```bash
-# Update service to load .env file
-cat > ~/.config/systemd/user/clawdbot-gateway.service << 'EOF'
-[Unit]
-Description=Clawdbot Gateway
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-ExecStart="/usr/bin/node" "/usr/lib/node_modules/clawdbot/dist/entry.js" gateway --port 18789
-Restart=always
-RestartSec=5
-KillMode=process
-EnvironmentFile=/home/pi/life_os/.env
-Environment=HOME=/home/pi
-Environment="PATH=/usr/local/bin:/usr/bin:/bin"
-Environment=CLAWDBOT_GATEWAY_PORT=18789
-
-[Install]
-WantedBy=default.target
-EOF
+# The service is auto-configured by openclaw daemon install
+# It loads env from ~/life_os/.env via EnvironmentFile
 
 systemctl --user daemon-reload
-systemctl --user restart clawdbot-gateway
+systemctl --user restart openclaw-gateway
 
 # Set Bedrock Claude Opus 4.5 as default model
-clawdbot models set amazon-bedrock/global.anthropic.claude-opus-4-5-20251101-v1:0
+openclaw models set amazon-bedrock/global.anthropic.claude-opus-4-5-20251101-v1:0
 ```
 
 **Option B: Anthropic API Key**
 
 ```bash
-clawdbot models auth paste-token --provider anthropic
+openclaw models auth paste-token --provider anthropic
 # Paste your API key when prompted
 ```
 
@@ -290,31 +272,31 @@ clawdbot models auth paste-token --provider anthropic
 # Add WhatsApp channel to config (using Python since jq may not be installed)
 python3 -c "
 import json
-with open('/home/pi/.clawdbot/clawdbot.json') as f:
+with open('/home/pi/.openclaw/openclaw.json') as f:
     config = json.load(f)
 config['channels'] = {'whatsapp': {'dmPolicy': 'allowlist', 'allowFrom': ['+1YOURNUMBER']}}
-with open('/home/pi/.clawdbot/clawdbot.json', 'w') as f:
+with open('/home/pi/.openclaw/openclaw.json', 'w') as f:
     json.dump(config, f, indent=2)
 "
 
 # Restart gateway
-systemctl --user restart clawdbot-gateway
+systemctl --user restart openclaw-gateway
 ```
 
 ### 4.5 Pair WhatsApp
 
 ```bash
 # This shows a QR code - scan with WhatsApp (Linked Devices)
-clawdbot channels login
+openclaw channels login
 ```
 
-### 4.6 Create JARVIS Skill for Clawdbot
+### 4.6 Create JARVIS Skill for OpenClaw
 
-Create `~/.clawdbot/skills/jarvis/SKILL.md`:
+Create `~/.openclaw/skills/jarvis/SKILL.md`:
 
 ```bash
-mkdir -p ~/.clawdbot/skills/jarvis
-cat > ~/.clawdbot/skills/jarvis/SKILL.md << 'EOF'
+mkdir -p ~/.openclaw/skills/jarvis
+cat > ~/.openclaw/skills/jarvis/SKILL.md << 'EOF'
 ---
 name: jarvis
 description: Access JARVIS personal data - Obsidian daily notes with tasks, health metrics, and calendar
@@ -359,7 +341,7 @@ Update `~/jarvis-workspace/SOUL.md` with Clawd persona.
 ### 4.8 Set Up Morning Briefing (Cron)
 
 ```bash
-clawdbot cron add \
+openclaw cron add \
   --name "Morning Briefing" \
   --cron "0 6 * * *" \
   --tz "America/New_York" \
@@ -370,17 +352,17 @@ clawdbot cron add \
   --to "+1YOURNUMBER"
 ```
 
-### 4.9 Verify Clawdbot Setup
+### 4.9 Verify OpenClaw Setup
 
 ```bash
 # Check status
-clawdbot status
+openclaw status
 
 # List cron jobs
-clawdbot cron list
+openclaw cron list
 
 # Check skills
-clawdbot skills list | grep jarvis
+openclaw skills list | grep jarvis
 ```
 
 ---
@@ -417,7 +399,7 @@ jarvis speak "Hello world"
 ### Morning Briefing
 - Automatic WhatsApp message at 6 AM Eastern daily
 - Includes: tasks from daily note, health data, calendar events
-- Managed via: `clawdbot cron list`
+- Managed via: `openclaw cron list`
 
 ### Journaling via WhatsApp
 Say "let me journal" or "journal time" to start a journaling session.
@@ -470,25 +452,25 @@ echo $DISPLAY
 flatpak run md.obsidian.Obsidian &
 ```
 
-### Clawdbot WhatsApp Disconnected
+### OpenClaw WhatsApp Disconnected
 ```bash
 # Re-pair
-clawdbot channels login
+openclaw channels login
 
 # Check status
-clawdbot status
+openclaw status
 ```
 
-### Clawdbot Gateway Not Running
+### OpenClaw Gateway Not Running
 ```bash
 # Check status
-systemctl --user status clawdbot-gateway
+systemctl --user status openclaw-gateway
 
 # Restart
-systemctl --user restart clawdbot-gateway
+systemctl --user restart openclaw-gateway
 
 # View logs
-clawdbot logs --follow
+openclaw logs --follow
 ```
 
 ---
@@ -500,8 +482,8 @@ clawdbot logs --follow
 # Critical files
 ~/.config/jarvis/              # OAuth tokens (Whoop, Google)
 ~/life_os/.env                 # Configuration
-~/.clawdbot/                   # Clawdbot config, credentials, skills
-~/jarvis-workspace/            # Clawdbot workspace (TOOLS.md, SOUL.md)
+~/.openclaw/                   # OpenClaw config, credentials, skills
+~/jarvis-workspace/            # OpenClaw workspace (TOOLS.md, SOUL.md)
 ~/Documents/all-notes-nopass/  # Obsidian vault
 ```
 
@@ -512,7 +494,7 @@ BACKUP_DIR=~/backups/jarvis-$(date +%Y%m%d)
 mkdir -p $BACKUP_DIR
 cp -r ~/.config/jarvis $BACKUP_DIR/
 cp ~/life_os/.env $BACKUP_DIR/
-cp -r ~/.clawdbot $BACKUP_DIR/
+cp -r ~/.openclaw $BACKUP_DIR/
 cp -r ~/jarvis-workspace $BACKUP_DIR/
 tar -czf $BACKUP_DIR.tar.gz $BACKUP_DIR
 echo "Backup saved to $BACKUP_DIR.tar.gz"
@@ -531,8 +513,8 @@ If Pi dies, on fresh Pi:
 5. [ ] Restore `~/.config/jarvis/` from backup
 6. [ ] Run `bash scripts/setup_services.sh`
 7. [ ] Install Obsidian: `flatpak install -y flathub md.obsidian.Obsidian`
-8. [ ] Install Clawdbot: `sudo npm install -g clawdbot@latest`
-9. [ ] Restore `~/.clawdbot/` from backup (or re-pair WhatsApp)
+8. [ ] Install OpenClaw: `sudo npm install -g openclaw@latest`
+9. [ ] Restore `~/.openclaw/` from backup (or re-pair WhatsApp)
 10. [ ] Verify: `curl http://localhost:8000/api/health`
 
 ---

@@ -14,12 +14,12 @@ JARVIS connects to your health trackers, calendars, notes, and smart home to pro
 Mac/Desktop                    Pi 5 (Brain)                 Pi 4 (Data)
 +-----------+                 +-------------+              +---------------+
 | Claude    | <-- SSH/CLI --> | JARVIS CLI  |              | Home Assistant|
-| Code      |                 | Clawdbot    |              | Redis (future)|
+| Code      |                 | OpenClaw    |              | Redis (future)|
 +-----------+                 | (WhatsApp)  |              +---------------+
                               +-------------+
       Phone                         |                            |
 +-----------+                       +------- Network ------------+
-| WhatsApp  | <-- Clawdbot -------->|
+| WhatsApp  | <-- OpenClaw -------->|
 +-----------+                       |
                     +---------------+---------------+
                     |               |               |
@@ -121,9 +121,9 @@ jarvis ask "What are my tasks for today?"
 jarvis ask "How did I sleep last night?"
 ```
 
-## WhatsApp Integration (Clawdbot)
+## WhatsApp Integration (OpenClaw)
 
-JARVIS integrates with WhatsApp via [Clawdbot](https://clawd.bot), allowing you to interact with your personal data from your phone.
+JARVIS integrates with WhatsApp via [OpenClaw](https://openclaw.ai), allowing you to interact with your personal data from your phone.
 
 ### Features
 
@@ -141,19 +141,19 @@ JARVIS integrates with WhatsApp via [Clawdbot](https://clawd.bot), allowing you 
 ### Setup
 
 ```bash
-# Install Clawdbot
-sudo npm install -g clawdbot@latest
+# Install OpenClaw
+sudo npm install -g openclaw@latest
 
 # Run setup
-clawdbot onboard
-clawdbot daemon install
-systemctl --user enable --now clawdbot-gateway
+openclaw onboard
+openclaw daemon install
+systemctl --user enable --now openclaw-gateway
 
 # Add Anthropic API key
-clawdbot models auth paste-token --provider anthropic
+openclaw models auth paste-token --provider anthropic
 
 # Pair WhatsApp (scan QR code)
-clawdbot channels login
+openclaw channels login
 ```
 
 See [SETUP_RECOVERY.md](docs/SETUP_RECOVERY.md) for complete setup instructions.
@@ -201,11 +201,11 @@ ssh pi@10.0.0.7 "cd ~/jarvis && source ~/.local/bin/env && uv run jarvis status"
 sudo systemctl status jarvis-api          # Web dashboard & API
 sudo systemctl status whoop-refresh       # Token refresh timer
 systemctl --user status obsidian          # Obsidian app
-systemctl --user status clawdbot-gateway  # WhatsApp gateway
+systemctl --user status openclaw-gateway  # WhatsApp gateway
 
 # View logs
 sudo journalctl -u jarvis-api -f
-clawdbot logs --follow
+openclaw logs --follow
 ```
 
 ## Dependencies

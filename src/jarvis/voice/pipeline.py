@@ -252,7 +252,7 @@ class VoicePipeline:
         text_lower = text.lower()
 
         # Simple keyword matching for demo
-        # In production, use Claude via Clawdbot for natural language understanding
+        # In production, use Claude via OpenClaw for natural language understanding
 
         if "sleep" in text_lower:
             from jarvis.aggregators.health import get_health_summary

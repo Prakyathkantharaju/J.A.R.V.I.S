@@ -31,9 +31,9 @@ check_requirements() {
     fi
     echo -e "${GREEN}✓ Python 3.12 available${NC}"
 
-    # Check for Node.js (for Clawdbot)
+    # Check for Node.js (for OpenClaw)
     if ! command -v node &> /dev/null; then
-        echo -e "${YELLOW}Node.js not found. Install it for Clawdbot integration.${NC}"
+        echo -e "${YELLOW}Node.js not found. Install it for OpenClaw integration.${NC}"
         echo "  brew install node  # macOS"
         echo "  sudo apt install nodejs  # Ubuntu/Debian"
     else
@@ -69,20 +69,20 @@ setup_config() {
     fi
 }
 
-# Set up Clawdbot (optional)
-setup_clawdbot() {
-    echo -e "${YELLOW}Setting up Clawdbot (optional)...${NC}"
+# Set up OpenClaw (optional)
+setup_openclaw() {
+    echo -e "${YELLOW}Setting up OpenClaw (optional)...${NC}"
 
     if command -v npm &> /dev/null; then
-        read -p "Install Clawdbot? (y/n) " -n 1 -r
+        read -p "Install OpenClaw? (y/n) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            npm install -g clawdbot@latest
-            echo -e "${GREEN}✓ Clawdbot installed${NC}"
-            echo -e "${YELLOW}Run 'clawdbot onboard' to complete setup${NC}"
+            npm install -g openclaw@latest
+            echo -e "${GREEN}✓ OpenClaw installed${NC}"
+            echo -e "${YELLOW}Run 'openclaw onboard' to complete setup${NC}"
         fi
     else
-        echo -e "${YELLOW}Skipping Clawdbot (npm not available)${NC}"
+        echo -e "${YELLOW}Skipping OpenClaw (npm not available)${NC}"
     fi
 }
 
@@ -97,7 +97,7 @@ main() {
     check_requirements
     setup_python
     setup_config
-    setup_clawdbot
+    setup_openclaw
 
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════${NC}"

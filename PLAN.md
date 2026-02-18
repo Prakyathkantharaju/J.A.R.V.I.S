@@ -2,18 +2,18 @@
 
 ## Overview
 
-JARVIS is a personal AI-powered operating system built using **Ralph-Claude-Code** for autonomous development and **Clawdbot** as the conversational interface. It integrates all your life data sources and provides intelligent assistance across multiple channels.
+JARVIS is a personal AI-powered operating system built using **Ralph-Claude-Code** for autonomous development and **OpenClaw** as the conversational interface. It integrates all your life data sources and provides intelligent assistance across multiple channels.
 
-## Architecture (Ralph + Clawdbot)
+## Architecture (Ralph + OpenClaw)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    USER INTERACTION                          │
-│  Clawdbot (WhatsApp/Telegram/Slack/Voice/Web)               │
+│  OpenClaw (WhatsApp/Telegram/Slack/Voice/Web)               │
 └──────────────────────────┬──────────────────────────────────┘
                            │
 ┌──────────────────────────┴──────────────────────────────────┐
-│              CLAWDBOT + SKILLS LAYER                         │
+│              OPENCLAW + SKILLS LAYER                         │
 │   JARVIS Skills: health, calendar, notes, home, training   │
 │   Built-in: browser, camera, screen, notifications          │
 └──────────────────────────┬──────────────────────────────────┘
@@ -46,7 +46,7 @@ jarvis/
 │   ├── __init__.py
 │   ├── main.py                  # Entry point
 │   │
-│   ├── skills/                  # Clawdbot skills (TypeScript/Python)
+│   ├── skills/                  # OpenClaw skills (TypeScript/Python)
 │   │   ├── health.ts            # Whoop + Garmin queries
 │   │   ├── calendar.ts          # Google + Outlook merged
 │   │   ├── notes.ts             # Obsidian search
@@ -88,17 +88,17 @@ ralph --verbose
 
 Ralph will use PROMPT.md to understand the project and @fix_plan.md to track tasks.
 
-### 2. Clawdbot for Interface
+### 2. OpenClaw for Interface
 ```bash
-# Install Clawdbot
-npm install -g clawdbot@latest
-clawdbot onboard --install-daemon
+# Install OpenClaw
+npm install -g openclaw@latest
+openclaw onboard --install-daemon
 
 # Install JARVIS skills
-clawdbot skill install ./src/jarvis/skills/
+openclaw skill install ./src/jarvis/skills/
 ```
 
-Clawdbot provides the conversational interface via WhatsApp, Telegram, etc.
+OpenClaw provides the conversational interface via WhatsApp, Telegram, etc.
 
 ## Your Configuration
 
@@ -110,7 +110,7 @@ Clawdbot provides the conversational interface via WhatsApp, Telegram, etc.
 | **Home Assistant** | Docker on Pi 4 |
 | **Location** | HA Companion App |
 | **Speaker** | Bluetooth on Pi 5 |
-| **Interface** | Clawdbot (WhatsApp/Telegram) |
+| **Interface** | OpenClaw (WhatsApp/Telegram) |
 
 ## Implementation Timeline (2-3 Days)
 
@@ -129,7 +129,7 @@ Clawdbot provides the conversational interface via WhatsApp, Telegram, etc.
 - [ ] Basic health aggregator (Whoop + Garmin)
 
 **Evening:**
-- [ ] Set up Clawdbot locally
+- [ ] Set up OpenClaw locally
 - [ ] Create first skill: `health` (query sleep, recovery, HRV)
 - [ ] Test via Telegram/WhatsApp
 
@@ -147,13 +147,13 @@ Clawdbot provides the conversational interface via WhatsApp, Telegram, etc.
 - [ ] Configure HA Companion App for location
 
 **Evening:**
-- [ ] Pi 5 deployment (Clawdbot + skills)
+- [ ] Pi 5 deployment (OpenClaw + skills)
 - [ ] Bluetooth speaker setup
 - [ ] End-to-end testing all skills
 
 ### Day 3: Polish + Voice
 **Morning:**
-- [ ] Voice input via Clawdbot (or Porcupine wake word)
+- [ ] Voice input via OpenClaw (or Porcupine wake word)
 - [ ] TTS output to Bluetooth speaker
 - [ ] Autonomous routines (morning briefing cron)
 
@@ -162,7 +162,7 @@ Clawdbot provides the conversational interface via WhatsApp, Telegram, etc.
 - [ ] Final testing
 - [ ] Git push - ready to clone
 
-## Clawdbot Skills to Build
+## OpenClaw Skills to Build
 
 | Skill | Command | Function |
 |-------|---------|----------|
@@ -175,7 +175,7 @@ Clawdbot provides the conversational interface via WhatsApp, Telegram, etc.
 | `food` | "What did I eat yesterday?" | Parse Obsidian food logs |
 | `location` | "Where am I?" | HA Companion location |
 
-## Autonomous Routines (Cron via Clawdbot)
+## Autonomous Routines (Cron via OpenClaw)
 
 | Routine | Schedule | Action |
 |---------|----------|--------|
@@ -201,10 +201,10 @@ cp .env.example .env
 # Run OAuth setup for services
 uv run python scripts/oauth_setup.py
 
-# Install Clawdbot + JARVIS skills
-npm install -g clawdbot@latest
-clawdbot onboard
-clawdbot skill install ./src/jarvis/skills/
+# Install OpenClaw + JARVIS skills
+npm install -g openclaw@latest
+openclaw onboard
+openclaw skill install ./src/jarvis/skills/
 
 # Start (or use Docker)
 docker-compose up -d
@@ -217,7 +217,7 @@ ralph --verbose
 
 | Device | Role | Services |
 |--------|------|----------|
-| **Pi 5** | Brain | Clawdbot daemon, Skills, Bluetooth audio |
+| **Pi 5** | Brain | OpenClaw daemon, Skills, Bluetooth audio |
 | **Pi 4** | Data | Home Assistant, SQLite, Redis |
 
 ## Key Dependencies
@@ -237,7 +237,7 @@ dependencies = [
 ```
 
 ```json
-// Clawdbot skills (package.json in skills/)
+// OpenClaw skills (package.json in skills/)
 {
   "dependencies": {
     "@anthropic-ai/sdk": "latest"
@@ -248,9 +248,9 @@ dependencies = [
 ## References
 
 - [Ralph-Claude-Code](https://github.com/frankbria/ralph-claude-code) - Autonomous development loop
-- [Clawdbot](https://clawd.bot/) - Personal AI assistant
-- [Clawdbot GitHub](https://github.com/clawdbot/clawdbot) - Source code
-- [Clawdbot Docs](https://docs.clawd.bot/) - Skills development
+- [OpenClaw](https://openclaw.ai/) - Personal AI agent
+- [OpenClaw GitHub](https://github.com/openclaw/openclaw) - Source code
+- [OpenClaw Docs](https://docs.openclaw.ai/) - Skills development
 - [whoopy](https://pypi.org/project/whoopy/) - Whoop Python library
 - [garminconnect](https://github.com/cyberjunky/python-garminconnect) - Garmin Python library
 - [Home Assistant](https://www.home-assistant.io/) - Smart home hub

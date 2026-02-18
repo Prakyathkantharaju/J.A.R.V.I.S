@@ -11,7 +11,7 @@
 │  │                    ALWAYS RUNNING (24/7)                             │   │
 │  │                                                                       │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────────┐  │   │
-│  │  │  Clawdbot   │  │    Data     │  │    Home     │  │   Voice    │  │   │
+│  │  │  OpenClaw   │  │    Data     │  │    Home     │  │   Voice    │  │   │
 │  │  │   Daemon    │  │    Sync     │  │  Assistant  │  │  Listener  │  │   │
 │  │  │             │  │  Scheduler  │  │             │  │ (Porcupine)│  │   │
 │  │  │ Listens to: │  │             │  │ Tracks:     │  │            │  │   │
@@ -31,7 +31,7 @@
 
 | Service | Location | What It Does |
 |---------|----------|--------------|
-| **Clawdbot Daemon** | Pi 5 | Listens for messages on all channels |
+| **OpenClaw Daemon** | Pi 5 | Listens for messages on all channels |
 | **Voice Listener** | Pi 5 | Waits for wake word via microphone |
 | **Data Sync** | Pi 5 | Pulls API data every 15 minutes |
 | **Home Assistant** | Pi 4 | Tracks location, manages devices |
@@ -53,8 +53,8 @@
 | Trigger | How | What Happens | Output |
 |---------|-----|--------------|--------|
 | **Voice** | Say "Hey JARVIS" | Wake word detected → listens → processes → responds | **Speaker responds** |
-| **WhatsApp** | Send message | Clawdbot receives → processes → responds | WhatsApp reply |
-| **Telegram** | Send message | Clawdbot receives → processes → responds | Telegram reply |
+| **WhatsApp** | Send message | OpenClaw receives → processes → responds | WhatsApp reply |
+| **Telegram** | Send message | OpenClaw receives → processes → responds | Telegram reply |
 | **Smart Home** | Motion/sensor | HA triggers automation → may notify JARVIS | Depends on automation |
 
 ---
@@ -137,7 +137,7 @@
           │                                                                  │
           │ You (WhatsApp): "What's my afternoon look like?"                │
           │                                                                  │
-          │ [Clawdbot receives, processes]:                                 │
+          │ [OpenClaw receives, processes]:                                 │
           │ - Checks Google Calendar                                        │
           │ - Checks Outlook Calendar                                       │
           │ - Merges and formats                                            │
@@ -279,7 +279,7 @@
              │
              ▼
     ┌──────────────────┐
-    │   CLAWDBOT /     │  Routes to appropriate skill
+    │   OPENCLAW /     │  Routes to appropriate skill
     │   SKILL ROUTER   │  Determines: health skill needed
     └────────┬─────────┘
              │
@@ -292,7 +292,7 @@
              ▼
     ┌──────────────────┐
     │   CLAUDE         │  Generates natural response
-    │   (via Clawdbot) │  "Your recovery is 78%, which is good..."
+    │   (via OpenClaw) │  "Your recovery is 78%, which is good..."
     └────────┬─────────┘
              │
              ▼
@@ -362,10 +362,10 @@ ralph --verbose
 ```
 Once JARVIS is built, Ralph is not needed for daily operation.
 
-### Clawdbot Daemon (Always Running)
+### OpenClaw Daemon (Always Running)
 ```bash
 # Starts on boot, runs forever
-clawdbot daemon start
+openclaw daemon start
 
 # This is what runs 24/7:
 # - Listens for messages (WhatsApp, Telegram, etc.)
@@ -373,7 +373,7 @@ clawdbot daemon start
 # - Processes incoming requests
 ```
 
-### Scheduled Jobs (APScheduler / Clawdbot Cron)
+### Scheduled Jobs (APScheduler / OpenClaw Cron)
 
 ```python
 # src/jarvis/autonomous/scheduler.py
@@ -411,8 +411,8 @@ scheduler.start()  # Runs in background forever
 │  USER-TRIGGERED                                                  │
 │  ──────────────                                                  │
 │  "Hey JARVIS"    → Voice Pipeline     → 🔊 Speaker response    │
-│  WhatsApp msg     → Clawdbot Skill     → 📱 WhatsApp reply      │
-│  Telegram msg     → Clawdbot Skill     → 📱 Telegram reply      │
+│  WhatsApp msg     → OpenClaw Skill     → 📱 WhatsApp reply      │
+│  Telegram msg     → OpenClaw Skill     → 📱 Telegram reply      │
 │                                                                  │
 │  LOCATION-TRIGGERED (via Home Assistant)                        │
 │  ──────────────────                                              │
@@ -438,11 +438,11 @@ scheduler.start()  # Runs in background forever
 │                      Pi 5 (Brain)                                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Process 1: clawdbot daemon                                     │
+│  Process 1: openclaw daemon                                     │
 │  ├── Listens on WhatsApp, Telegram, Slack, Web                  │
 │  ├── Routes to skills                                           │
 │  ├── Runs cron jobs (morning briefing, etc.)                    │
-│  └── PID file: /var/run/clawdbot.pid                            │
+│  └── PID file: /var/run/openclaw.pid                            │
 │                                                                  │
 │  Process 2: jarvis-voice                                        │
 │  ├── Porcupine wake word listener                               │

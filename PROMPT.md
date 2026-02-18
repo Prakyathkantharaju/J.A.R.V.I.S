@@ -1,6 +1,6 @@
 # JARVIS - Development Instructions
 
-You are building JARVIS, a personal AI assistant that integrates multiple life data sources and provides intelligent assistance via Clawdbot.
+You are building JARVIS, a personal AI assistant that integrates multiple life data sources and provides intelligent assistance via OpenClaw.
 
 ## Project Overview
 
@@ -17,7 +17,7 @@ JARVIS aggregates data from:
 ```
 User (Voice/WhatsApp/Telegram)
          ↓
-    Clawdbot (Skills)
+    OpenClaw (Skills)
          ↓
     Python Adapters
          ↓
@@ -27,7 +27,7 @@ User (Voice/WhatsApp/Telegram)
 ## Key Files
 
 - `src/jarvis/adapters/` - Data source adapters
-- `src/jarvis/skills/` - Clawdbot skills (TypeScript)
+- `src/jarvis/skills/` - OpenClaw skills (TypeScript)
 - `src/jarvis/aggregators/` - Combine data from multiple sources
 - `src/jarvis/autonomous/` - Scheduled routines
 - `config/settings.py` - Configuration management
@@ -35,7 +35,7 @@ User (Voice/WhatsApp/Telegram)
 ## Development Priorities
 
 1. **Adapters First**: Get data flowing from each source
-2. **Skills Second**: Expose data via Clawdbot skills
+2. **Skills Second**: Expose data via OpenClaw skills
 3. **Aggregation Third**: Combine sources for briefings
 4. **Voice Last**: Add wake word + TTS
 
@@ -61,7 +61,7 @@ Check `@fix_plan.md` for the current prioritized task list.
 
 JARVIS is complete when:
 1. All adapters fetch data successfully
-2. Clawdbot skills respond to queries
+2. OpenClaw skills respond to queries
 3. Morning briefing generates and speaks at 6:30 AM
 4. "Hey JARVIS" wake word triggers voice interaction
 5. Can be deployed to Raspberry Pi with one command
